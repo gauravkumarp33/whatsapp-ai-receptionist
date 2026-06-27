@@ -1,0 +1,46 @@
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*.so
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Environment variables and secrets
+.env
+*.env
+
+# IDE and editor settings
+.vscode/
+.idea/
+*.swp
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Dependency and build artifacts
+build/
+dist/
+*.egg-info/
+
+# Docker
+*.pid
+*.tar
+*.gz
+
+# Data and model files
+data/
+*.csv
+*.json
+*.pkl
+
+# Ignore Antigravity IDE settings
+.antigravity/
