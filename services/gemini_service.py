@@ -6,7 +6,7 @@ from services.prompt_service import get_business_prompt
 genai.configure(api_key=settings.GEMINI_API_KEY)
 
 _model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash",
+    model_name="gemini-2.5-flash",
     system_instruction=get_business_prompt(),
 )
 

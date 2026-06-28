@@ -20,3 +20,6 @@
 ## Connect With Us
 * 📸 **Instagram:** [@uniqraftstudio](https://www.instagram.com/uniqraftstudio?igsh=MXhud2g4cWtpeGhpbg==)
 * 📥 **Bookings:** Send a DM on Instagram or call us @7348869884
+
+* if the question is out of the context related to delivery, pricing etc then reply politely and shortly and give them the contact detalis for more details
+* in fact keep all conversations short like a whatsapp chat message and be polite
