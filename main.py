@@ -4,9 +4,11 @@ WhatsApp AI Receptionist - Main Application Entry Point
 
 import logging
 from fastapi import FastAPI, Request, HTTPException, Query
+from pydantic import BaseModel
 from fastapi.responses import PlainTextResponse, JSONResponse
 
 from config import settings
+from services.gemini_service import generate_response
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -34,6 +36,31 @@ app = FastAPI(
 async def health_check():
     """Returns service health status."""
     return {"status": "ok", "service": "whatsapp-ai-receptionist"}
+
+
+# ---------------------------------------------------------------------------
+# DEV ONLY – Test Gemini integration directly (remove after WhatsApp integration)
+# ---------------------------------------------------------------------------
+class TestGeminiRequest(BaseModel):
+    message: str
+
+
+@app.post("/test-gemini", tags=["Dev"])
+async def test_gemini(payload: TestGeminiRequest):
+    """
+    Development-only endpoint to test the Gemini AI service directly.
+    Accepts a message and returns the generated response with an empty
+    conversation history.  Remove this endpoint after WhatsApp integration.
+    """
+    try:
+        result = generate_response(
+            user_message=payload.message,
+            conversation_history=[],
+        )
+        return JSONResponse(content={"response": result}, status_code=200)
+    except Exception as exc:
+        logger.exception("Error calling Gemini service: %s", exc)
+        raise HTTPException(status_code=500, detail="Gemini service error. See server logs for details.")
 
 
 # ---------------------------------------------------------------------------
