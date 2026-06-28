@@ -9,6 +9,11 @@ from fastapi.responses import PlainTextResponse, JSONResponse
 
 from config import settings
 from services.gemini_service import generate_response
+from services.memory_service import get_mode, ConversationMode, get_history, add_message
+from services.booking_service import is_booking_active, process_booking_message, start_booking
+from services.intent_service import detect_intent, Intent
+from services.image_service import get_images
+from services.whatsapp_service import send_text_message, send_image_message
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -39,28 +44,62 @@ async def health_check():
 
 
 # ---------------------------------------------------------------------------
-# DEV ONLY – Test Gemini integration directly (remove after WhatsApp integration)
+# Internal message orchestration helper
 # ---------------------------------------------------------------------------
-class TestGeminiRequest(BaseModel):
+def process_message_logic(sender: str, text: str) -> dict:
+    mode = get_mode(sender)
+    if mode == ConversationMode.HUMAN_HANDOFF:
+        logger.info("Customer %s is in HUMAN_HANDOFF mode. Ignoring.", sender)
+        return {"type": "handoff", "response": "Conversation is currently under human control."}
+        
+    if is_booking_active(sender):
+        logger.info("Customer %s has an active booking session.", sender)
+        response_text = process_booking_message(sender, text)
+        return {"type": "booking", "response": response_text}
+        
+    intent = detect_intent(text)
+    
+    if intent == Intent.IMAGE_REQUEST:
+        image_urls = get_images(text)
+        return {"type": "image", "images": image_urls}
+            
+    elif intent == Intent.BOOKING_REQUEST:
+        response_text = start_booking(sender)
+        return {"type": "booking", "response": response_text}
+        
+    elif intent == Intent.TEXT_QUERY:
+        history = get_history(sender)
+        response_text = generate_response(text, history)
+        
+        # Store history on success
+        add_message(sender, "user", text)
+        add_message(sender, "model", response_text)
+        return {"type": "text", "response": response_text}
+
+    return {"type": "text", "response": ""}
+
+
+# ---------------------------------------------------------------------------
+# DEV ONLY – Test chatbot orchestration directly
+# ---------------------------------------------------------------------------
+class TestChatRequest(BaseModel):
+    phone_number: str
     message: str
 
 
+# Development testing endpoint. Remove or disable before production deployment.
 @app.post("/test-gemini", tags=["Dev"])
-async def test_gemini(payload: TestGeminiRequest):
+async def test_gemini(payload: TestChatRequest):
     """
-    Development-only endpoint to test the Gemini AI service directly.
-    Accepts a message and returns the generated response with an empty
-    conversation history.  Remove this endpoint after WhatsApp integration.
+    Development-only endpoint to test the full chatbot orchestration logic
+    without hitting the WhatsApp API.
     """
     try:
-        result = generate_response(
-            user_message=payload.message,
-            conversation_history=[],
-        )
-        return JSONResponse(content={"response": result}, status_code=200)
+        result = process_message_logic(payload.phone_number, payload.message)
+        return JSONResponse(content=result, status_code=200)
     except Exception as exc:
-        logger.exception("Error calling Gemini service: %s", exc)
-        raise HTTPException(status_code=500, detail="Gemini service error. See server logs for details.")
+        logger.exception("Error in orchestration logic: %s", exc)
+        raise HTTPException(status_code=500, detail="Orchestration error. See server logs for details.")
 
 
 # ---------------------------------------------------------------------------
@@ -138,4 +177,11 @@ async def handle_incoming_message(message: dict, context: dict):
     if msg_type == "text":
         text = message.get("text", {}).get("body", "")
         logger.info("Text content: %s", text)
-        # TODO: pass `text` to AI service and send reply via WhatsApp service
+        
+        result = process_message_logic(sender, text)
+        
+        if result["type"] in ("text", "booking"):
+            send_text_message(sender, result["response"])
+        elif result["type"] == "image":
+            for url in result["images"]:
+                send_image_message(sender, url)
