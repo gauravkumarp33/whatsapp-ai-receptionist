@@ -9,7 +9,7 @@ from fastapi.responses import PlainTextResponse, JSONResponse
 
 from config import settings
 from services.gemini_service import generate_response
-from services.memory_service import get_mode, ConversationMode, get_history, add_message
+from services.memory_service import get_mode, set_mode, ConversationMode, get_history, add_message
 from services.booking_service import is_booking_active, process_booking_message, start_booking
 from services.intent_service import detect_intent, Intent
 from services.image_service import get_images
@@ -47,6 +47,17 @@ async def health_check():
 # Internal message orchestration helper
 # ---------------------------------------------------------------------------
 def process_message_logic(sender: str, text: str) -> dict:
+    text_stripped = text.strip().lower()
+    if text_stripped == "/human":
+        set_mode(sender, ConversationMode.HUMAN_HANDOFF)
+        logger.info("Switched customer %s to HUMAN_HANDOFF mode.", sender)
+        return {"type": "system", "response": ""}
+        
+    if text_stripped == "/bot":
+        set_mode(sender, ConversationMode.ACTIVE_BOT)
+        logger.info("Switched customer %s to ACTIVE_BOT mode.", sender)
+        return {"type": "system", "response": ""}
+
     mode = get_mode(sender)
     if mode == ConversationMode.HUMAN_HANDOFF:
         logger.info("Customer %s is in HUMAN_HANDOFF mode. Ignoring.", sender)
