@@ -116,7 +116,7 @@ async def verify_webhook(
     Meta sends a GET request with hub.mode, hub.challenge, and hub.verify_token.
     We must echo back hub.challenge when the token matches.
     """
-    if hub_mode == "subscribe" and hub_verify_token == settings.WHATSAPP_VERIFY_TOKEN:
+    if hub_mode == "subscribe" and hub_verify_token == settings.VERIFY_TOKEN:
         logger.info("Webhook verified successfully.")
         return PlainTextResponse(content=hub_challenge, status_code=200)
 
@@ -144,6 +144,12 @@ async def receive_message(request: Request):
         for entry in body.get("entry", []):
             for change in entry.get("changes", []):
                 value = change.get("value", {})
+                
+                # Ignore status updates (delivery/read receipts)
+                if "statuses" in value:
+                    logger.info("Ignoring status update.")
+                    continue
+
                 messages = value.get("messages", [])
                 for message in messages:
                     await handle_incoming_message(message, value)
