@@ -12,9 +12,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+# Create and activate virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 # ── Stage 2: runtime image ────────────────────────────────────────────
 FROM python:3.11-slim AS runtime
@@ -23,20 +26,17 @@ FROM python:3.11-slim AS runtime
 RUN useradd --create-home appuser
 WORKDIR /home/appuser/app
 
-# Copy installed packages from builder
-COPY --from=builder /install /usr/local
+# Copy virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy application source
 COPY --chown=appuser:appuser . .
 
 USER appuser
 
-# Expose the application port (default 8000, overridable via APP_PORT)
 EXPOSE 8000
 
-# Use environment variable for port so it can be overridden at runtime
-ENV APP_HOST=0.0.0.0 \
-    APP_PORT=8000 \
-    LOG_LEVEL=INFO
+ENV PORT=8000
 
-CMD ["sh", "-c", "uvicorn main:app --host $APP_HOST --port $APP_PORT --log-level $(echo $LOG_LEVEL | tr '[:upper:]' '[:lower:]')"]
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port $PORT"]

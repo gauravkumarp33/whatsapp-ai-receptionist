@@ -1,22 +1,16 @@
 # WhatsApp AI Receptionist
 
-An AI-powered receptionist that automatically handles incoming WhatsApp messages using the **Meta Cloud API** and an **OpenAI** language model.
+An AI-powered receptionist that automatically handles incoming WhatsApp messages using the **Meta Cloud API**, **Gemini API** for natural language understanding, and **Cloudinary** for image processing.
 
 ---
 
-## Project Structure
+## Project Overview
 
-```
-whatsapp-ai-receptionist/
-├── prompts/          # System-prompt text files for the AI
-├── data/             # Static reference data (FAQs, business hours, etc.)
-├── services/         # Business-logic modules (whatsapp_service, ai_service, …)
-├── main.py           # FastAPI application & webhook endpoints
-├── config.py         # Centralised settings via Pydantic BaseSettings
-├── requirements.txt  # Python dependencies
-├── Dockerfile        # Multi-stage container build
-└── README.md         # This file
-```
+This project provides a complete solution to automate WhatsApp interactions:
+- Handles user queries intelligently using Gemini.
+- Supports an automated booking flow.
+- Fetches and serves images via Cloudinary based on user intent.
+- Human handoff capability to pause the bot when manual intervention is needed.
 
 ---
 
@@ -27,7 +21,8 @@ whatsapp-ai-receptionist/
 | Python | 3.11+ |
 | Docker (optional) | 24+ |
 | Meta Developer Account | — |
-| OpenAI API Key | — |
+| Gemini API Key | — |
+| Cloudinary Account | — |
 
 ---
 
@@ -50,90 +45,82 @@ pip install -r requirements.txt
 
 ### 2. Configure environment variables
 
-Create a `.env` file in the project root (never commit this file):
+Create a `.env` file in the project root:
 
 ```dotenv
 # WhatsApp / Meta Cloud API
 WHATSAPP_PHONE_NUMBER_ID=your_phone_number_id
 WHATSAPP_ACCESS_TOKEN=your_permanent_access_token
-WHATSAPP_VERIFY_TOKEN=my_verify_token   # Must match what you set in Meta dashboard
+VERIFY_TOKEN=my_verify_token
 
-# OpenAI
-OPENAI_API_KEY=sk-...
-OPENAI_MODEL=gpt-4o-mini
+# Gemini AI
+GEMINI_API_KEY=your_gemini_api_key
 
-# App
-APP_HOST=0.0.0.0
-APP_PORT=8000
-LOG_LEVEL=INFO
+# Cloudinary (Images)
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_cloudinary_key
+CLOUDINARY_API_SECRET=your_cloudinary_secret
 ```
 
 ### 3. Run locally
 
+Run the application using `uvicorn`:
+
 ```bash
-uvicorn main:app --reload --port 8000
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 The API will be available at `http://localhost:8000`.  
 Interactive docs: `http://localhost:8000/docs`
 
-### 4. Expose locally with a tunnel (for Meta webhook registration)
+### 4. Expose locally with a tunnel
 
 ```bash
 # Using ngrok
 ngrok http 8000
 ```
-
-Copy the HTTPS URL and register it in the **Meta Developer Console** under  
-**WhatsApp → Configuration → Webhook URL**: `https://<your-ngrok-id>.ngrok.io/webhook`
+Register the `https://<your-ngrok-id>.ngrok-free.app/webhook` URL in the Meta Developer Console under webhook configurations.
 
 ---
 
 ## Running with Docker
 
-```bash
-# Build
-docker build -t whatsapp-ai-receptionist .
+### Docker Build
 
-# Run
+Build the optimized container image:
+
+```bash
+docker build -t whatsapp-ai-receptionist .
+```
+
+### Docker Run
+
+Run the container, passing the `.env` file and exposing the correct port:
+
+```bash
 docker run -p 8000:8000 --env-file .env whatsapp-ai-receptionist
+```
+
+You can optionally override the port using the `PORT` environment variable:
+
+```bash
+docker run -p 8080:8080 -e PORT=8080 --env-file .env whatsapp-ai-receptionist
 ```
 
 ---
 
-## API Endpoints
+## Environment Variables Reference
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/health` | Health check |
-| `GET` | `/webhook` | Meta webhook verification handshake |
-| `POST` | `/webhook` | Receive incoming WhatsApp messages |
-
----
-
-## Configuration Reference
-
-All configuration lives in [`config.py`](config.py) and is read from environment variables.
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `WHATSAPP_PHONE_NUMBER_ID` | `""` | Your WhatsApp phone number ID |
-| `WHATSAPP_ACCESS_TOKEN` | `""` | Meta permanent / long-lived access token |
-| `WHATSAPP_VERIFY_TOKEN` | `my_verify_token` | Webhook verification token |
-| `WHATSAPP_API_VERSION` | `v19.0` | Meta Graph API version |
-| `OPENAI_API_KEY` | `""` | OpenAI API key |
-| `OPENAI_MODEL` | `gpt-4o-mini` | LLM model to use |
-| `APP_HOST` | `0.0.0.0` | Uvicorn host |
-| `APP_PORT` | `8000` | Uvicorn port |
-| `LOG_LEVEL` | `INFO` | Logging level |
-
----
-
-## Next Steps
-
-- **`services/`** – Implement `whatsapp_service.py` (send messages) and `ai_service.py` (call OpenAI).
-- **`prompts/`** – Add `system_prompt.txt` with your receptionist persona and instructions.
-- **`data/`** – Add business info, FAQs, or any static context the AI should reference.
+| Variable | Description |
+|----------|-------------|
+| `WHATSAPP_PHONE_NUMBER_ID` | Your WhatsApp phone number ID |
+| `WHATSAPP_ACCESS_TOKEN` | Meta permanent / long-lived access token |
+| `VERIFY_TOKEN` | Webhook verification token |
+| `GEMINI_API_KEY` | Gemini API key |
+| `CLOUDINARY_CLOUD_NAME` | Cloudinary Cloud Name |
+| `CLOUDINARY_API_KEY` | Cloudinary API Key |
+| `CLOUDINARY_API_SECRET` | Cloudinary API Secret |
+| `PORT` | The port the application will run on (Default: 8000) |
 
 ---
 
