@@ -145,6 +145,7 @@ async def receive_message(request: Request):
     Parses the payload and delegates to the message handler service.
     """
     try:
+        logger.info("========== WEBHOOK HIT ==========")
         body = await request.json()
         logger.info("Incoming webhook payload: %s", body)
 
