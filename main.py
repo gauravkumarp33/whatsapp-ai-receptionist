@@ -140,38 +140,40 @@ async def verify_webhook(
 # ---------------------------------------------------------------------------
 @app.post("/webhook", tags=["Webhook"])
 async def receive_message(request: Request):
-    """
-    Receives incoming WhatsApp messages from Meta's Cloud API.
-    Parses the payload and delegates to the message handler service.
-    """
-    try:
-        logger.info("========== WEBHOOK HIT ==========")
-        body = await request.json()
-        logger.info("Incoming webhook payload: %s", body)
+    logger.info("========== WEBHOOK HIT ==========")
 
-        # Validate it is a WhatsApp business account event
+    try:
+        raw_body = await request.body()
+        logger.info("Raw body: %s", raw_body.decode("utf-8"))
+
+        body = await request.json()
+        logger.info("Parsed body: %s", body)
+
         if body.get("object") != "whatsapp_business_account":
-            return JSONResponse(content={"status": "ignored"}, status_code=200)
+            logger.info("Ignoring non-whatsapp event")
+            return JSONResponse({"status": "ignored"}, status_code=200)
 
         for entry in body.get("entry", []):
+            logger.info("Entry: %s", entry)
+
             for change in entry.get("changes", []):
+                logger.info("Change: %s", change)
+
                 value = change.get("value", {})
-                
-                # Ignore status updates (delivery/read receipts)
+
                 if "statuses" in value:
-                    logger.info("Ignoring status update.")
+                    logger.info("Status update received")
                     continue
 
-                messages = value.get("messages", [])
-                for message in messages:
+                for message in value.get("messages", []):
+                    logger.info("Processing message: %s", message)
                     await handle_incoming_message(message, value)
 
-        return JSONResponse(content={"status": "received"}, status_code=200)
+        return JSONResponse({"status": "received"}, status_code=200)
 
-    except Exception as exc:
-        logger.exception("Error processing webhook: %s", exc)
-        # Always return 200 to Meta to prevent retries
-        return JSONResponse(content={"status": "error"}, status_code=200)
+    except Exception:
+        logger.exception("Webhook error")
+        return JSONResponse({"status": "error"}, status_code=200)
 
 
 # ---------------------------------------------------------------------------
