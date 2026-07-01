@@ -140,7 +140,7 @@ async def verify_webhook(
 # ---------------------------------------------------------------------------
 @app.post("/webhook", tags=["Webhook"])
 async def receive_message(request: Request):
-    logger.info("========== WEBHOOK HIT ==========")
+    print("========== WEBHOOK HIT ==========")
 
     try:
         raw_body = await request.body()
