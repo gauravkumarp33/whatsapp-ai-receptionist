@@ -139,41 +139,20 @@ async def verify_webhook(
 # WhatsApp Webhook – POST (incoming messages)
 # ---------------------------------------------------------------------------
 @app.post("/webhook", tags=["Webhook"])
+@app.post("/webhook")
 async def receive_message(request: Request):
-    print("========== WEBHOOK HIT ==========")
+    print("STEP 1")
 
     try:
-        raw_body = await request.body()
-        logger.info("Raw body: %s", raw_body.decode("utf-8"))
-
         body = await request.json()
-        logger.info("Parsed body: %s", body)
+        print("STEP 2")
+        print(body)
 
-        if body.get("object") != "whatsapp_business_account":
-            logger.info("Ignoring non-whatsapp event")
-            return JSONResponse({"status": "ignored"}, status_code=200)
+        return {"status": "received"}
 
-        for entry in body.get("entry", []):
-            logger.info("Entry: %s", entry)
-
-            for change in entry.get("changes", []):
-                logger.info("Change: %s", change)
-
-                value = change.get("value", {})
-
-                if "statuses" in value:
-                    logger.info("Status update received")
-                    continue
-
-                for message in value.get("messages", []):
-                    logger.info("Processing message: %s", message)
-                    await handle_incoming_message(message, value)
-
-        return JSONResponse({"status": "received"}, status_code=200)
-
-    except Exception:
-        logger.exception("Webhook error")
-        return JSONResponse({"status": "error"}, status_code=200)
+    except Exception as e:
+        print("EXCEPTION:", repr(e))
+        raise
 
 
 # ---------------------------------------------------------------------------
